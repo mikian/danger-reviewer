@@ -1,33 +1,78 @@
+require 'net/http'
+require 'uri'
+require 'json'
+require_relative './github'
+
 module Danger
-  # This is your plugin class. Any attributes or methods you expose here will
-  # be available from within your Dangerfile.
-  #
-  # To be published on the Danger plugins site, you will need to have
-  # the public interface documented. Danger uses [YARD](http://yardoc.org/)
-  # for generating documentation from your plugin source, and you can verify
-  # by running `danger plugins lint` or `bundle exec rake spec`.
-  #
-  # You should replace these comments with a public description of your library.
-  #
-  # @example Ensure people are well warned about merging on Mondays
-  #
-  #          my_plugin.warn_on_mondays
-  #
-  # @see  Mikko Kokkonen/danger-reviewer
-  # @tags monday, weekends, time, rattata
-  #
   class DangerReviewer < Plugin
+    def assign(team, max_reviewers = 2, user_blacklist = [])
+      current = current_reviewers
 
-    # An attribute that you can read/write from your Dangerfile
-    #
-    # @return   [Array<String>]
-    attr_accessor :my_attribute
+      # Check if we already have enough reviewers
+      return if current.count >= max_reviewers
 
-    # A method that you can call from your Dangerfile
-    # @return   [Array<String>]
-    #
-    def warn_on_mondays
-      warn 'Trying to merge code on a Monday' if Date.today.wday == 1
+      authors = find_authors
+      members = team_members(team)
+      reviewers = find_reviewers((authors & members), user_blacklist, (max_reviewers - current.count))
+
+      request_reviews(reviewers)
+    end
+
+    def request_reviews(reviewers)
+      owner, repo = env.ci_source.repo_slug.split('/')
+
+      require 'pry'; binding.pry
+
+      uri = URI.parse("https://api.github.com/repos/#{owner}/#{repo}/pulls/#{github.pr_json[:number]}/requested_reviewers")
+      header = {'Content-Type': 'text/json', 'Authorization': "token #{ENV['DANGER_GITHUB_API_TOKEN']}" }
+
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      request = Net::HTTP::Post.new(uri.request_uri, header)
+      request.body = {'reviewers': reviewers}.to_json
+
+      # Send the request
+      response = http.request(request)
+      response.status == 201
+    end
+
+    def find_authors
+      owner, repo = env.ci_source.repo_slug.split('/')
+      branch = github.branch_for_head
+
+      users = Hash.new(0)
+
+      git.modified_files.each do |file|
+        result = GitHub::Client.query(GitHub::BlameQuery, variables: { repository: repo, owner: owner, ref: branch, file: file })
+        result.data.repository.ref.target.blame.ranges.each do |range|
+          lines = (range.ending_line - range.starting_line) + 1
+          users[range.commit.author.user.login] += lines unless range.commit.author.user.nil?
+        end
+      end
+
+      users.keys
+    end
+
+    def find_reviewers(users, user_blacklist, max_reviewers)
+      user_blacklist << github.pr_author
+
+      users = users - user_blacklist
+      users = users.sort_by { |_, value| value }.reverse
+
+      users[0...max_reviewers]
+    end
+
+    def current_reviewers
+      owner, repo = env.ci_source.repo_slug.split('/')
+
+      result = GitHub::Client.query(GitHub::ReviewerQuery, variables: { repo: repo, owner: owner, number: github.pr_json[:number] })
+      result.data.repository.pull_request.review_requests.edges.map { |edge| edge.node.reviewer.login }
+    end
+
+    def team_members(team)
+      owner, repo = env.ci_source.repo_slug.split('/')
+      result = GitHub::Client.query(GitHub::MemberQuery, variables: { organization: owner, team: team})
+      result.data.organization.team.members.edges.map { |edge| edge.node.login }
     end
   end
 end

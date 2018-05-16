@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.name          = 'danger-reviewer'
   spec.version       = Reviewer::VERSION
   spec.authors       = ['Mikko Kokkonen']
-  spec.email         = ['mikko.kokkonen@appearhere.co.uk']
+  spec.email         = ['mikko@mikian.com']
   spec.description   = %q{A short description of danger-reviewer.}
   spec.summary       = %q{A longer description of danger-reviewer.}
   spec.homepage      = 'https://github.com/Mikko Kokkonen/danger-reviewer'
@@ -19,6 +19,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_runtime_dependency 'danger-plugin-api', '~> 1.0'
+  spec.add_runtime_dependency 'graphql-client', '~> 0.12'
 
   # General ruby development
   spec.add_development_dependency 'bundler', '~> 1.3'
