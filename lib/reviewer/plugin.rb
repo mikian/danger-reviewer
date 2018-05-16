@@ -31,7 +31,7 @@ module Danger
 
       # Send the request
       response = http.request(request)
-      response.status == 201
+      response.kind_of?(Net::HTTPCreated)
     end
 
     def find_authors
