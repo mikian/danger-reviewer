@@ -8,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.version       = Reviewer::VERSION
   spec.authors       = ['Mikko Kokkonen']
   spec.email         = ['mikko@mikian.com']
-  spec.description   = %q{A short description of danger-reviewer.}
-  spec.summary       = %q{A longer description of danger-reviewer.}
-  spec.homepage      = 'https://github.com/Mikko Kokkonen/danger-reviewer'
+  spec.description   = 'Detect who has been last changed most lines on pull request and request review.'
+  spec.summary       = 'Danger plugin to automatically request reviews from potential users on pull requests.'
+  spec.homepage      = 'https://github.com/mikian/danger-reviewer'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files`.split($/)
