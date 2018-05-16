@@ -13,15 +13,13 @@ module Danger
 
       authors = find_authors
       members = team_members(team)
-      reviewers = find_reviewers((authors & members), user_blacklist, (max_reviewers - current.count))
+      reviewers = find_reviewers((authors & members), members, user_blacklist, (max_reviewers - current.count))
 
       request_reviews(reviewers)
     end
 
     def request_reviews(reviewers)
       owner, repo = env.ci_source.repo_slug.split('/')
-
-      require 'pry'; binding.pry
 
       uri = URI.parse("https://api.github.com/repos/#{owner}/#{repo}/pulls/#{github.pr_json[:number]}/requested_reviewers")
       header = {'Content-Type': 'text/json', 'Authorization': "token #{ENV['DANGER_GITHUB_API_TOKEN']}" }
@@ -44,6 +42,7 @@ module Danger
 
       git.modified_files.each do |file|
         result = GitHub::Client.query(GitHub::BlameQuery, variables: { repository: repo, owner: owner, ref: branch, file: file })
+        next if result.data.repository.ref.nil?
         result.data.repository.ref.target.blame.ranges.each do |range|
           lines = (range.ending_line - range.starting_line) + 1
           users[range.commit.author.user.login] += lines unless range.commit.author.user.nil?
@@ -53,13 +52,21 @@ module Danger
       users.keys
     end
 
-    def find_reviewers(users, user_blacklist, max_reviewers)
+    def find_reviewers(authors, members, user_blacklist, max_reviewers)
       user_blacklist << github.pr_author
 
-      users = users - user_blacklist
-      users = users.sort_by { |_, value| value }.reverse
+      reviewers = []
 
-      users[0...max_reviewers]
+      authors = authors - user_blacklist
+      authors = authors.sort_by { |_, value| value }.reverse
+
+      reviewers += authors[0...max_reviewers]
+
+      if reviewers.count < max_reviewers
+        reviewers += (members - reviewers).sample(max_reviewers - reviewers.count)
+      end
+
+      reviewers
     end
 
     def current_reviewers
