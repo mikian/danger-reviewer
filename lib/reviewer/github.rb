@@ -8,7 +8,12 @@ module GitHub
     end
   end
 
-  Schema = GraphQL::Client.load_schema(File.expand_path('../../data/schema.json', __dir__))
+  Schema = if ENV['USE_CACHED_SCHEMA']
+             Schema = GraphQL::Client.load_schema(File.expand_path('../../data/schema.json', __dir__))
+           else
+             GraphQL::Client.load_schema(HTTP)
+           end
+
 
   Client = GraphQL::Client.new(schema: Schema, execute: HTTP)
 
