@@ -64,13 +64,22 @@ module GitHub
   GRAPHQL
 
   ReviewerQuery = GitHub::Client.parse <<-'GRAPHQL'
-    query($owner:String!, $repo:String!, $number:Int!) {
+    query ($owner: String!, $repo: String!, $number: Int!) {
       repository(name: $repo, owner: $owner) {
         pullRequest(number: $number) {
           reviewRequests(first: 10) {
             edges {
               node {
                 reviewer {
+                  login
+                }
+              }
+            }
+          }
+          reviews(first: 10) {
+            edges {
+              node {
+                author {
                   login
                 }
               }

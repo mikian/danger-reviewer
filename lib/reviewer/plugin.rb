@@ -73,7 +73,10 @@ module Danger
       owner, repo = env.ci_source.repo_slug.split('/')
 
       result = GitHub::Client.query(GitHub::ReviewerQuery, variables: { repo: repo, owner: owner, number: github.pr_json[:number] })
-      result.data.repository.pull_request.review_requests.edges.map { |edge| edge.node.reviewer.login }
+      [
+        result.data.repository.pull_request.review_requests.edges.map { |edge| edge.node.reviewer.login },
+        result.data.repository.pull_request.reviews.edges.map { |edge| edge.node.author.login },
+      ].flatten.uniq
     end
 
     def team_members(team)
