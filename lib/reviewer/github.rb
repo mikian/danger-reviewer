@@ -70,18 +70,14 @@ module GitHub
           reviewRequests(first: 10) {
             edges {
               node {
-                reviewer {
-                  login
-                }
+                id
               }
             }
           }
           reviews(first: 10) {
             edges {
               node {
-                author {
-                  login
-                }
+                id
               }
             }
           }

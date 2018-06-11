@@ -6,14 +6,14 @@ require_relative './github'
 module Danger
   class DangerReviewer < Plugin
     def assign(team, max_reviewers = 2, user_blacklist = [])
-      current = current_reviewers
+      current_count = current_reviewers_count
 
       # Check if we already have enough reviewers
-      return if current.count >= max_reviewers
+      return if current_count >= max_reviewers
 
       authors = find_authors
       members = team_members(team)
-      reviewers = find_reviewers((authors & members), members, user_blacklist, (max_reviewers - current.count))
+      reviewers = find_reviewers((authors & members), members, user_blacklist, (max_reviewers - current_count))
 
       request_reviews(reviewers)
     end
@@ -69,14 +69,11 @@ module Danger
       reviewers
     end
 
-    def current_reviewers
+    def current_reviewers_count
       owner, repo = env.ci_source.repo_slug.split('/')
 
       result = GitHub::Client.query(GitHub::ReviewerQuery, variables: { repo: repo, owner: owner, number: github.pr_json[:number] })
-      [
-        result.data.repository.pull_request.review_requests.edges.map { |edge| edge.node.reviewer.login },
-        result.data.repository.pull_request.reviews.edges.map { |edge| edge.node.author.login },
-      ].flatten.uniq
+      result.data.repository.pull_request.review_requests.edges.count + result.data.repository.pull_request.reviews.edges.count
     end
 
     def team_members(team)
