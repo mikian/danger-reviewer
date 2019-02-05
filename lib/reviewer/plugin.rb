@@ -9,7 +9,7 @@ module Danger
       current_count = current_reviewers_count
 
       # Check if we already have enough reviewers
-      return if current_count >= max_reviewers
+      return if current_count >= max_reviewers || current_count  == -1
 
       authors = find_authors
       members = team_members(team)
@@ -42,7 +42,7 @@ module Danger
 
       git.modified_files.each do |file|
         result = GitHub::Client.query(GitHub::BlameQuery, variables: { repository: repo, owner: owner, ref: branch, file: file })
-        next if result.data.repository.ref.nil?
+        next if result.data.nil? || result.data.repository.ref.nil?
         result.data.repository.ref.target.blame.ranges.each do |range|
           lines = (range.ending_line - range.starting_line) + 1
           users[range.commit.author.user.login] += lines unless range.commit.author.user.nil?
@@ -73,12 +73,16 @@ module Danger
       owner, repo = env.ci_source.repo_slug.split('/')
 
       result = GitHub::Client.query(GitHub::ReviewerQuery, variables: { repo: repo, owner: owner, number: github.pr_json[:number] })
+      return -1 if result.data.nil?
+
       result.data.repository.pull_request.review_requests.edges.count + result.data.repository.pull_request.reviews.edges.count
     end
 
     def team_members(team)
       owner, repo = env.ci_source.repo_slug.split('/')
       result = GitHub::Client.query(GitHub::MemberQuery, variables: { organization: owner, team: team})
+      return [] if result.data.nil?
+
       result.data.organization.team.members.edges.map { |edge| edge.node.login }
     end
   end
