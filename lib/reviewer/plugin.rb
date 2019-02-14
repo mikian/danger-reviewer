@@ -21,7 +21,8 @@ module Danger
     def request_reviews(reviewers)
       owner, repo = env.ci_source.repo_slug.split('/')
 
-      uri = URI.parse("https://api.github.com/repos/#{owner}/#{repo}/pulls/#{github.pr_json[:number]}/requested_reviewers")
+      baseURL = ENV["DANGER_GITHUB_API_BASE_URL"] || "https://api.github.com"
+      uri = URI.parse("#{baseURL}/repos/#{owner}/#{repo}/pulls/#{github.pr_json[:number]}/requested_reviewers")
       header = {'Content-Type': 'text/json', 'Authorization': "token #{ENV['DANGER_GITHUB_API_TOKEN']}" }
 
       http = Net::HTTP.new(uri.host, uri.port)
